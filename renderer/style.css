@@ -92,3 +92,28 @@ tfoot td{background:var(--grey-50);font-weight:700;color:var(--grey-900)}
 }
 #update{position:fixed;right:24px;top:24px;z-index:45;background:var(--grey-900);color:#fff;border-radius:16px;padding:16px 20px;box-shadow:var(--shadow-m);display:flex;gap:16px;align-items:center;max-width:420px}
 #update .btn{min-height:44px;font-size:16px}
+.ord-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(360px,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){.ord-grid{grid-template-columns:1fr}}
+.big-in{font-size:22px;min-height:58px}
+.res-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:360px;overflow:auto}
+.res-list button{display:flex;justify-content:space-between;gap:12px;text-align:left;border:1px solid var(--grey-200);background:var(--grey-50);border-radius:12px;padding:12px 14px;font-size:18px;cursor:pointer;min-height:52px}
+.res-list button:hover,.res-list button.on{border-color:var(--blue-500);background:var(--blue-50)}
+.res-list .meta{font-size:14px;color:var(--grey-600);white-space:nowrap}
+.photo{display:block;max-width:100%;max-height:520px;border-radius:12px;border:1px solid var(--grey-200);margin:12px 0}
+.stmt{margin-bottom:16px}
+.st-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;margin-bottom:12px}
+.st-top h1{margin:0;font-size:28px;letter-spacing:.3em}
+.st-top div:last-child{text-align:right}
+.st-parties{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.sheet table.st-p{font-size:14px}
+.st-p th{background:var(--grey-100);font-size:13px;padding:6px 8px;width:70px}
+.st-p td{padding:6px 8px}
+.st-p .vt{writing-mode:vertical-rl;width:28px;letter-spacing:.2em}
+.st-sum{margin-top:12px}
+.st-sum th{width:18%}
+.ledger{font-size:14px}
+.ledger th,.ledger td{padding:6px 8px!important;white-space:nowrap}
+.ledger tr.paid td{background:var(--green-50)}
+.pb{height:24px}
+@media print{.pb{page-break-after:always;height:0}.sheet{page-break-inside:auto}.ledger{font-size:10px}}
+[hidden]{display:none!important}

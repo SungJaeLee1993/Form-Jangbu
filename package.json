@@ -1,17 +1,22 @@
 {
   "name": "jangbu",
   "productName": "식자재 장부",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "산후조리원 식자재 유통 업무 자동화 (주문·발주·명세서·정산)",
   "main": "src/main.js",
   "private": true,
   "author": "Lee Sung-jae",
   "license": "UNLICENSED",
-  "repository": { "type": "git", "url": "https://github.com/SungJaeLee1993/Form-Jangbu.git" },
-  "engines": { "node": ">=22 <23" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SungJaeLee1993/Form-Jangbu.git"
+  },
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "start": "electron .",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/freshone.js && node --check src/store.js && node --check renderer/app.js",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/freshone.js && node --check src/store.js && node --check src/importer.js && node --check src/ai.js && node --check renderer/app.js",
     "test": "npm run check && node --test test/*.test.js",
     "dist:win": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always"
@@ -19,7 +24,8 @@
   "dependencies": {
     "electron-log": "5.4.4",
     "electron-updater": "6.8.10",
-    "playwright-core": "1.63.0"
+    "playwright-core": "1.63.0",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "electron": "43.7.10",
@@ -29,9 +35,25 @@
     "appId": "kr.jangbu.app",
     "productName": "식자재 장부",
     "artifactName": "jangbu-setup-${version}.${ext}",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["src/**", "renderer/**", "package.json"],
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }] },
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**",
+      "renderer/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
@@ -40,6 +62,13 @@
       "shortcutName": "식자재 장부",
       "deleteAppDataOnUninstall": false
     },
-    "publish": [{ "provider": "github", "owner": "SungJaeLee1993", "repo": "Form-Jangbu", "releaseType": "release" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SungJaeLee1993",
+        "repo": "Form-Jangbu",
+        "releaseType": "release"
+      }
+    ]
   }
 }

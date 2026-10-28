@@ -79,6 +79,20 @@ function setupIpc() {
   });
   ipcMain.handle('print:paper', () => new Promise(res => win.webContents.print({ printBackground: true }, ok => res(ok))));
 
+  ipcMain.handle('import:xls', (e, name, bytes) => {
+    const { parseWorkbook } = require('./importer');
+    return parseWorkbook(Buffer.from(bytes), String(name));
+  });
+  ipcMain.handle('export:xlsx', async (e, { name, title, header, rows }) => {
+    const { buildLedgerXlsx } = require('./importer');
+    const safe = String(name).replace(/[\\/:*?"<>|]/g, '_');
+    const r = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), safe), filters: [{ name: 'Excel', extensions: ['xlsx'] }] });
+    if (r.canceled || !r.filePath) return false;
+    fs.writeFileSync(r.filePath, buildLedgerXlsx({ title, header, rows }));
+    shell.openPath(r.filePath);
+    return true;
+  });
+  ipcMain.handle('ai:read', (e, payload) => require('./ai').readOrder(payload, log));
   ipcMain.handle('freshone:run', async (e, payload) => {
     const freshone = require('./freshone'); // 필요할 때만 불러옴
     return freshone.run(payload, log);

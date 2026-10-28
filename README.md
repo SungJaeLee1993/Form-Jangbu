@@ -9,11 +9,17 @@
 | `src/main.js` | Electron 메인: 창, 저장, 인쇄/PDF, 자동 업데이트, 로그 |
 | `src/store.js` | 데이터 파일 저장(원자적 쓰기, 30일 자동 백업, 업데이트 전 백업, 깨진 파일 복구) |
 | `src/freshone.js` | 프레시원 장바구니 자동 입력 (윈도우 기본 Edge 사용) |
+| `src/importer.js` | 예전 프로그램 엑셀(거래처원장·매출원장 .xls/.xlsx) 읽기, 원장 엑셀 내보내기 |
+| `src/ai.js` | 주문 사진·카톡 글 AI 인식 (Anthropic API, 키는 PC 설정에만) |
 | `src/preload.js` | 화면 ↔ 메인 연결 (보안 격리) |
 | `renderer/` | 화면 (HTML/CSS/JS, 빌드 도구 없음) |
 | `test/` | 저장소 테스트, 화면 스모크 테스트 |
 
 데이터 위치: `%APPDATA%\식자재 장부\data.json`, 자동 백업은 같은 폴더의 `backups\`. 문제 기록은 `%APPDATA%\식자재 장부\logs\main.log`.
+
+## 주의
+
+**실제 거래 데이터(엑셀, 명세서 PDF)는 이 저장소에 올리지 않는다.** 저장소가 공개라서 누구나 볼 수 있다. 테스트는 `test/`의 가짜 데이터로만 한다.
 
 ## 개발
 
@@ -49,4 +55,5 @@ git commit -am "0.1.1" && git push       # main에 올리면 GitHub Actions가 �
 - [ ] 프레시원 로그인/검색/장바구니 화면 요소 맞추기 (설정 › 프레시원 › 고급)
 - [ ] 안드로이드 앱 + 클라우드 동기화
 - [ ] 코드 서명 인증서 (없으면 첫 설치 때 Windows SmartScreen 경고 → "추가 정보 › 실행")
+- [ ] `xlsx` 0.18.5는 npm 마지막 버전이라 보안 권고가 있음(악성 엑셀 파일 대상). 아버지가 직접 고른 파일만 읽으므로 위험은 낮지만, SheetJS 공식 배포본(0.20.x)으로 교체 검토
 - [ ] Electron 43.8.x 이상으로 올리기 (eMudhra 인증서 보안 권고 GHSA-jr5w-w6x2-84p9 대응, 2주 경과 후)
