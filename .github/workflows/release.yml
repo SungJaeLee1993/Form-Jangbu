@@ -1,7 +1,7 @@
 name: release
-# main에 올라온 package.json 버전의 릴리스가 아직 없으면
+# main에 올라온 package.json 버전이 아직 릴리스되지 않았으면
 # 윈도우 설치파일을 만들어 GitHub Releases(v버전)에 올린다.
-# 설치된 프로그램은 여기서 새 버전을 찾아 자동 업데이트한다.
+# 설치된 프로그램은 여기서 latest.yml을 보고 자동 업데이트한다.
 on:
   push:
     branches: [main]
@@ -17,21 +17,20 @@ concurrency:
 jobs:
   build-windows:
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
       - name: 이미 나간 버전인지 확인
         id: ver
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           V=$(node -p "require('./package.json').version")
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          if gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"; echo "v$V 는 이미 릴리스됨 — 건너뜀"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          D=$(gh release view "v$V" --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || echo none)
+          if [ "$D" = "false" ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; echo "v$V 이미 릴리스됨"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v5
         if: steps.ver.outputs.skip == 'false'
         with:
@@ -41,25 +40,30 @@ jobs:
         run: npm ci
       - if: steps.ver.outputs.skip == 'false'
         run: npm test
-      - name: 버전 태그 만들기
+      - name: 자동 업데이트가 안 되는 릴리스 정리 (latest.yml 없는 것)
         if: steps.ver.outputs.skip == 'false'
-        shell: bash
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select([.assets[].name] | index("latest.yml") | not) | .id' |
+            while read -r id; do echo "delete release $id"; gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; done
+      - name: 초안 릴리스 만들기
+        if: steps.ver.outputs.skip == 'false'
         run: |
           T="v${{ steps.ver.outputs.version }}"
           git fetch --tags --force
-          if ! git rev-parse "$T" >/dev/null 2>&1; then
-            git tag "$T" && git push origin "$T"
-          fi
-      - name: Build & publish
+          git rev-parse "$T" >/dev/null 2>&1 || { git tag "$T" && git push origin "$T"; }
+          gh release create "$T" --repo "$GITHUB_REPOSITORY" --draft --title "$T" --notes "식자재 장부 $T" --verify-tag
+      - name: Build & upload
         if: steps.ver.outputs.skip == 'false'
-        shell: bash
         run: |
-          set -o pipefail
           set +e
           npx electron-builder --win --x64 --publish always 2>&1 | tee build.log
           code=${PIPESTATUS[0]}
-          grep -iE "publish|upload|error|warn|skipp|exists" build.log | tail -n 30 | sed 's/%/%25/g' | while IFS= read -r l; do echo "::notice::$l"; done
-          ls -la dist | sed 's/%/%25/g' | while IFS= read -r l; do echo "::notice::dist $l"; done
+          grep -iE "publish|upload|error|skipp|exists" build.log | tail -n 20 | sed 's/%/%25/g' | while IFS= read -r l; do echo "::notice::$l"; done
           exit $code
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 릴리스 공개 (이때부터 자동 업데이트)
+        if: steps.ver.outputs.skip == 'false'
+        run: |
+          T="v${{ steps.ver.outputs.version }}"
+          gh release view "$T" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | tee assets.txt
+          grep -q '^latest.yml$' assets.txt && grep -q '\.exe$' assets.txt || { echo "::error::설치파일 또는 latest.yml 누락"; exit 1; }
+          gh release edit "$T" --repo "$GITHUB_REPOSITORY" --draft=false --latest
