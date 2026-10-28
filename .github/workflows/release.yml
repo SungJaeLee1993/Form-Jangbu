@@ -18,7 +18,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: 이미 나간 버전인지 확인
         id: ver
         shell: bash
@@ -32,7 +32,7 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: steps.ver.outputs.skip == 'false'
         with:
           node-version-file: .nvmrc
@@ -43,6 +43,12 @@ jobs:
         run: npm test
       - name: Build & publish
         if: steps.ver.outputs.skip == 'false'
-        run: npx electron-builder --win --x64 --publish always
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --win --x64 --publish always 2>&1 | tee build.log || {
+            tail -n 40 build.log | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
