@@ -55,9 +55,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx electron-builder --win --x64 --publish always 2>&1 | tee build.log || {
-            tail -n 40 build.log | sed 's/%/%25/g' | while IFS= read -r l; do echo "::error::$l"; done
-            exit 1
-          }
+          set +e
+          npx electron-builder --win --x64 --publish always 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          grep -iE "publish|upload|error|warn|skipp|exists" build.log | tail -n 30 | sed 's/%/%25/g' | while IFS= read -r l; do echo "::notice::$l"; done
+          ls -la dist | sed 's/%/%25/g' | while IFS= read -r l; do echo "::notice::dist $l"; done
+          exit $code
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

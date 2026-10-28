@@ -1,7 +1,7 @@
 {
   "name": "jangbu",
   "productName": "식자재 장부",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "산후조리원 식자재 유통 업무 자동화 (주문·발주·명세서·정산)",
   "main": "src/main.js",
   "private": true,
