@@ -41,6 +41,15 @@ jobs:
         run: npm ci
       - if: steps.ver.outputs.skip == 'false'
         run: npm test
+      - name: 버전 태그 만들기
+        if: steps.ver.outputs.skip == 'false'
+        shell: bash
+        run: |
+          T="v${{ steps.ver.outputs.version }}"
+          git fetch --tags --force
+          if ! git rev-parse "$T" >/dev/null 2>&1; then
+            git tag "$T" && git push origin "$T"
+          fi
       - name: Build & publish
         if: steps.ver.outputs.skip == 'false'
         shell: bash
