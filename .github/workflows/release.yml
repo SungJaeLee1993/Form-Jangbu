@@ -1,0 +1,26 @@
+name: release
+# v로 시작하는 태그를 올리면(예: v0.1.1) 윈도우 설치파일을 만들어 GitHub Releases에 올린다.
+# 설치된 프로그램은 여기서 새 버전을 찾아 자동 업데이트한다.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build & publish
+        run: npx electron-builder --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
