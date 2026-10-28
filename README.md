@@ -27,9 +27,11 @@ npm test           # 문법 검사 + 테스트
 ## 새 버전 내보내기 (아버지 PC에 자동 업데이트)
 
 ```bash
-npm version patch      # 0.1.0 → 0.1.1 (package.json + git 태그)
-git push --follow-tags # GitHub Actions가 윈도우 설치파일을 만들어 Releases에 올림
+npm version patch --no-git-tag-version   # 0.1.0 → 0.1.1
+git commit -am "0.1.1" && git push       # main에 올리면 GitHub Actions가 설치파일을 만들어 Releases(v0.1.1)에 올림
 ```
+
+버전 숫자를 안 올리고 push하면 테스트만 돌고 릴리스는 건너뛴다.
 
 설치된 프로그램은 켤 때와 4시간마다 새 버전을 확인하고, 뒤에서 받아 두었다가 **프로그램을 끌 때 설치**한다. 업데이트 직전 데이터는 `backups\before-v새버전-from-v옛버전.json`으로 자동 보관된다.
 
