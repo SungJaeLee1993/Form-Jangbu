@@ -27,14 +27,14 @@ function sample() {
   ].map(([code, name, unit, price, taxable, aliases]) => ({ id: uid(), code, name, spec: '', unit, price, taxable, freshoneName: name, aliases }));
   return {
     version: 1, sample: true,
-    settings: { deliveryDays: [1, 3, 5], round: 10, pin: '', biz: { name: '', owner: '', tel: '', no: '', address: '', fax: '' }, ai: { key: '', model: 'claude-sonnet-5-5' }, print2: true, freshone: { id: '', pw: '', loginUrl: 'https://www.freshone.co.kr', searchUrl: '', selectors: '' } },
+    settings: { deliveryDays: [1, 3, 5], round: 10, pin: '', biz: { name: '', owner: '', tel: '', no: '', address: '', fax: '' }, ai: { key: '', model: 'claude-sonnet-5-5' }, print2: true, freshone: { id: '', pw: '', loginUrl: 'https://onlyonefoodnetfo.ifresh.co.kr', searchUrl: '', selectors: '' } },
     centers: c, items: it,
     marginRules: [{ id: uid(), scope: 'default', type: 'pct', value: 10, from: '2026-01-01' }],
     orders: [], externals: [], payments: [], purchases: []
   };
 }
 /* 데이터 구조 버전. 구조를 바꿀 땐 SCHEMA를 올리고 MIGRATIONS에 변환을 추가한다(지우지 말 것). */
-const SCHEMA = 2;
+const SCHEMA = 3;
 const MIGRATIONS = {
   // v2: 상품코드·규격·과세 구분, 조리원 사업자 정보·이월잔액, 주문 경로
   2: db => {
@@ -43,6 +43,8 @@ const MIGRATIONS = {
     (db.orders || []).forEach(o => { o.source = o.source || '직접'; (o.lines || []).forEach(l => { const it = (db.items || []).find(i => i.id === l.itemId); l.taxable = !!(l.taxable ?? it?.taxable); l.code = l.code || it?.code || ''; }); });
     (db.externals || []).forEach(e => { e.taxable = !!e.taxable; });
   },
+  // v3: 발주처를 온리원푸드넷(CJ프레시웨이)으로
+  3: db => { const f = db.settings?.freshone; if (f && (!f.loginUrl || /freshone\.co\.kr/.test(f.loginUrl))) f.loginUrl = 'https://onlyonefoodnetfo.ifresh.co.kr'; },
 };
 function migrate(db) {
   db.version = Number(db.version) || 1;
@@ -310,7 +312,7 @@ function aggregate(date) {
   const m = {};
   ordersOn(date).forEach(o => o.lines.forEach(l => {
     const k = l.itemId; const i = item(k);
-    m[k] = m[k] || { itemId: k, name: l.name, unit: l.unit, freshoneName: i?.freshoneName || '', cost: i ? Number(i.price) : l.cost, qty: 0, by: [] };
+    m[k] = m[k] || { itemId: k, code: i?.code || l.code || '', name: l.name, unit: l.unit, freshoneName: i?.freshoneName || '', cost: i ? Number(i.price) : l.cost, qty: 0, by: [] };
     m[k].qty = +(m[k].qty + Number(l.qty)).toFixed(2); m[k].by.push((center(o.centerId)?.name || '').replace('조리원', '') + ' ' + num(l.qty));
   }));
   return Object.values(m).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
@@ -320,13 +322,13 @@ V.purchase = () => {
   const rows = aggregate(UI.pdate), p = purchaseOf(UI.pdate), total = rows.reduce((s, r) => s + r.qty * r.cost, 0);
   const missing = rows.filter(r => !r.freshoneName).length;
   const st = p?.status === 'done' ? '<span class="badge b-ok">발주 완료</span>' : p?.status === 'cart' ? '<span class="badge b-info">장바구니 담음</span>' : '<span class="badge b-n">아직 안 함</span>';
-  return `<h1>발주하기</h1><div class="sub">조리원 주문을 품목별로 합쳤어요. 프레시원 장바구니에 넣고, 주문 버튼은 직접 눌러 주세요.</div>
+  return `<h1>발주하기</h1><div class="sub">조리원 주문을 품목별로 합쳤어요. 온리원푸드넷 장바구니에 넣고, 주문 버튼은 직접 눌러 주세요.</div>
   <div class="row" style="margin-bottom:16px"><div class="field"><label>배송일</label><input type="date" value="${UI.pdate}" data-c="setPDate"></div><div class="grow"></div>${st}</div>
-  ${missing ? `<div class="warn">프레시원 상품명이 없는 품목이 ${missing}개 있어요. 설정 › 품목에서 넣어 주세요.</div>` : ''}
-  <div class="card">${rows.length ? `<table><thead><tr><th>품목</th><th>프레시원 상품명</th><th class="n">합계 수량</th><th>조리원별</th><th class="n">매입 단가</th><th class="n">매입 금액</th></tr></thead><tbody>
-   ${rows.map(r => `<tr><td><b>${esc(r.name)}</b></td><td>${r.freshoneName ? esc(r.freshoneName) : '<span class="badge b-warn">없음</span>'}</td><td class="n"><b>${num(r.qty)}</b> ${esc(r.unit)}</td><td class="small">${esc(r.by.join(' · '))}</td><td class="n">${won(r.cost)}</td><td class="n">${won(r.qty * r.cost)}</td></tr>`).join('')}
-   </tbody><tfoot><tr><td colspan="5">예상 매입 합계</td><td class="n">${won(total)}</td></tr></tfoot></table>` : `<div class="empty">${fmtD(UI.pdate)} 주문이 아직 없어요</div>`}</div>
-  ${rows.length ? `<div class="row"><button class="btn p" data-a="freshone">프레시원에 넣기</button><button class="btn s" data-a="copyList">목록 복사</button><div class="grow"></div><button class="btn s" data-a="markDone">${p?.status === 'done' ? '발주 완료 취소' : '주문 끝냈어요'}</button></div>
+  ${missing ? `<div class="warn">상품코드가 없는 품목이 ${missing}개 있어요. 설정 › 품목에서 넣어 주세요.</div>` : ''}
+  <div class="card">${rows.length ? `<table><thead><tr><th>상품코드</th><th>품목</th><th>온리원푸드넷 상품명</th><th class="n">합계 수량</th><th>조리원별</th><th class="n">매입 단가</th><th class="n">매입 금액</th></tr></thead><tbody>
+   ${rows.map(r => `<tr><td class="small">${esc(r.code) || '<span class="badge b-warn">없음</span>'}</td><td><b>${esc(r.name)}</b></td><td>${r.freshoneName ? esc(r.freshoneName) : '<span class="badge b-warn">없음</span>'}</td><td class="n"><b>${num(r.qty)}</b> ${esc(r.unit)}</td><td class="small">${esc(r.by.join(' · '))}</td><td class="n">${won(r.cost)}</td><td class="n">${won(r.qty * r.cost)}</td></tr>`).join('')}
+   </tbody><tfoot><tr><td colspan="6">예상 매입 합계</td><td class="n">${won(total)}</td></tr></tfoot></table>` : `<div class="empty">${fmtD(UI.pdate)} 주문이 아직 없어요</div>`}</div>
+  ${rows.length ? `<div class="row"><button class="btn p" data-a="freshone">온리원푸드넷에 넣기</button><button class="btn s" data-a="copyList">목록 복사</button><div class="grow"></div><button class="btn s" data-a="markDone">${p?.status === 'done' ? '발주 완료 취소' : '주문 끝냈어요'}</button></div>
   <div class="small" style="margin-top:12px">‘주문 끝냈어요’를 누르면 지금 매입가로 이번 주문의 단가를 다시 계산해요.</div>` : ''}`;
 };
 
@@ -433,7 +435,7 @@ V.settle = () => {
 };
 
 /* ⚙ 설정 */
-const SETTABS = [['import', '엑셀 가져오기'], ['centers', '조리원'], ['items', '품목'], ['margin', '마진'], ['etc', '배송·명세서'], ['freshone', '프레시원'], ['ai', '사진 인식'], ['backup', '백업']];
+const SETTABS = [['import', '엑셀 가져오기'], ['centers', '조리원'], ['items', '품목'], ['margin', '마진'], ['etc', '배송·명세서'], ['freshone', '온리원푸드넷'], ['ai', '사진 인식'], ['backup', '백업']];
 V.settings = () => {
   if (DB.settings.pin && !UI.unlocked) return `<h1>설정</h1><div class="card" style="max-width:420px"><div class="field"><label>비밀번호</label><input type="password" id="pin" inputmode="numeric"></div><div class="row" style="margin-top:16px"><button class="btn p" data-a="unlock">열기</button></div></div>`;
   return `<h1>설정</h1><div class="sub">평소엔 건드릴 일 없어요. 품목·가격·마진이 바뀔 때만 와요.</div>
@@ -469,7 +471,7 @@ SV.etc = () => {
 };
 SV.freshone = () => {
   const f = DB.settings.freshone;
-  return `<div class="warn">프레시원 화면에 맞춰 마지막 연결 작업이 남아 있어요. 로그인·발주 화면 캡처를 받으면 아래 고급 설정을 채워서 완성해요.</div>
+  return `<div class="warn">CJ프레시웨이 온리원푸드넷에 연결해요. 온리원푸드넷 비밀번호는 90일마다 바꿔야 해서, 바꾸면 여기도 새 비밀번호로 고쳐 주세요. 장바구니 자동 담기는 화면 캡처를 받아 고급 설정을 채우면 완성돼요.</div>
   <div class="card"><h2>계정</h2><div class="small" style="margin-bottom:12px">이 컴퓨터에만 저장돼요.</div><div class="grid2">
    <div class="field"><label>아이디</label><input data-c="fo" data-k="id" value="${esc(f.id)}"></div><div class="field"><label>비밀번호</label><input type="password" data-c="fo" data-k="pw" value="${esc(f.pw)}"></div>
    <div class="field"><label>로그인 주소</label><input data-c="fo" data-k="loginUrl" value="${esc(f.loginUrl)}"></div><div class="field"><label>상품 검색 주소 ({q} 자리에 상품명)</label><input data-c="fo" data-k="searchUrl" value="${esc(f.searchUrl)}" placeholder="https://…/search?keyword={q}"></div></div></div>
@@ -519,18 +521,18 @@ const A = {
   },
   setPDate: (d, el) => { UI.pdate = el.value; render(); },
   copyList: async () => {
-    const t = aggregate(UI.pdate).map(r => `${r.freshoneName || r.name}\t${num(r.qty)}${r.unit}`).join('\n');
+    const t = aggregate(UI.pdate).map(r => `${r.code}\t${r.freshoneName || r.name}\t${num(r.qty)}\t${r.unit}`).join('\n');
     try { await navigator.clipboard.writeText(t); toast('복사했어요. 프레시원에 붙여넣으세요'); } catch (e) { modal(`<h2>목록</h2><textarea readonly>${esc(t)}</textarea>`); }
   },
   freshone: async () => {
     const rows = aggregate(UI.pdate); if (!rows.length) return;
     if (!API?.freshone) return modal(`<h2>PC 프로그램에서만 돼요</h2><p>프레시원 자동 입력은 윈도우에 설치한 프로그램에서 동작해요. 지금은 ‘목록 복사’를 써 주세요.</p>`);
-    const f = DB.settings.freshone; if (!f.id || !f.pw) { toast('설정 › 프레시원에서 아이디·비밀번호를 넣어 주세요'); return go('settings'); }
-    toast('프레시원을 여는 중이에요…');
-    const res = await API.freshone({ account: f, items: rows.map(r => ({ name: r.freshoneName || r.name, qty: r.qty, unit: r.unit })) });
+    const f = DB.settings.freshone; if (!f.id || !f.pw) { toast('설정 › 온리원푸드넷에서 아이디·비밀번호를 넣어 주세요'); return go('settings'); }
+    toast('온리원푸드넷을 여는 중이에요…');
+    const res = await API.freshone({ account: f, items: rows.map(r => ({ code: r.code, name: r.freshoneName || r.name, qty: r.qty, unit: r.unit })) });
     let p = purchaseOf(UI.pdate); if (!p) { p = { id: uid(), date: UI.pdate, status: 'cart' }; DB.purchases.push(p); } else if (p.status !== 'done') p.status = 'cart';
     save(); render();
-    modal(`<h2>${res.ok ? '장바구니에 담았어요' : '일부만 담았어요'}</h2><p>열린 프레시원 창에서 장바구니를 확인하고 <b>주문 버튼은 직접</b> 눌러 주세요.</p>${(res.failed || []).length ? `<div class="warn">못 담은 품목: ${esc(res.failed.join(', '))}<br>직접 담아 주세요.</div>` : ''}${res.message ? `<div class="small">${esc(res.message)}</div>` : ''}`);
+    modal(`<h2>${res.ok ? '장바구니에 담았어요' : '일부만 담았어요'}</h2><p>열린 온리원푸드넷 창에서 장바구니를 확인하고 <b>주문 버튼은 직접</b> 눌러 주세요.</p>${(res.failed || []).length ? `<div class="warn">못 담은 품목: ${esc(res.failed.join(', '))}<br>직접 담아 주세요.</div>` : ''}${res.message ? `<div class="small">${esc(res.message)}</div>` : ''}`);
   },
   markDone: () => {
     let p = purchaseOf(UI.pdate);
